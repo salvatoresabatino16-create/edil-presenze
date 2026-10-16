@@ -4,6 +4,12 @@ import streamlit as st
 from datetime import datetime, date
 import calendar
 
+# Import per la generazione del PDF
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FILE_DATI = os.path.join(BASE_DIR, "edilizia_dati.txt")
 
@@ -35,7 +41,7 @@ def salva_dati(dati):
 
 st.set_page_config(page_title="EdilPresenze Pro", page_icon="🏗️", layout="centered")
 
-# --- STYLING CSS PERSONALIZZATO (DESIGN MODERNO SAAS) ---
+# --- STYLING CSS PERSONALIZZATO ---
 st.markdown("""
     <style>
     .main { background-color: #F8FAFC; }
@@ -97,7 +103,7 @@ if st.session_state["user_role"] is None:
                         st.error("Password Admin errata!")
 
 # ==========================================
-# 2. PANNELLO OPERAIO (MOBILE OPTIMIZED)
+# 2. PANNELLO OPERAIO
 # ==========================================
 elif st.session_state["user_role"] == "operaio":
     operai = dati.get("operai", [])
@@ -177,7 +183,7 @@ elif st.session_state["user_role"] == "operaio":
 elif st.session_state["user_role"] == "admin":
     st.markdown("### 📊 Dashboard Amministratore")
 
-    tab_dash, tab_cantieri, tab_operai, tab_report = st.tabs(["📊 Panoramica", "🏗️ Cantieri", "👥 Operai", "📄 Report & Presenze"])
+    tab_dash, tab_cantieri, tab_operai, tab_report = st.tabs(["📊 Panoramica", "🏗️ Cantieri", "👥 Operai", "📄 Report & PDF"])
 
     with tab_dash:
         operai = dati.get("operai", [])
@@ -244,68 +250,73 @@ elif st.session_state["user_role"] == "admin":
                 st.rerun()
 
     with tab_report:
-        st.markdown("#### 📄 Report e Storico Presenze Aziendali")
-        
-        # 1. Report Giornaliero
-        st.markdown("##### 📌 Report della Giornata Odierna")
-        data_oggi_str = datetime.now().strftime("%Y-%m-%d")
-        
-        testo_report = f"=== REPORT GIORNATA: {datetime.now().strftime('%d/%m/%Y')} ===\n\n"
-        costo_totale_giorno = 0.0
+        st.markdown("#### 📄 Generazione Report PDF Ufficiale")
+        st.markdown("Scarica il report riepilogativo giornaliero pronto per la stampa o l'archiviazione.")
 
-        for op in dati.get("operai", []):
-            paga = op.get("paga_oraria", 20.0)
-            ore_lavorate = 0.0
-            ultimo_inizio = None
+        def genera_pdf_giornaliero():
+            pdf_path = os.path.join(BASE_DIR, "report_giornaliero.pdf")
+            doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+            story = []
             
-            for t in op.get("timbrature", []):
-                if t["orario"].startswith(data_oggi_str):
-                    if t["tipo"] == "Inizia":
-                        try:
-                            ultimo_inizio = datetime.strptime(t["orario"], "%Y-%m-%d %H:%M")
-                        except:
-                            pass
-                    elif t["tipo"] == "Termina" and ultimo_inizio:
-                        try:
-                            fine = datetime.strptime(t["orario"], "%Y-%m-%d %H:%M")
-                            delta = fine - ultimo_inizio
-                            ore_lavorate += delta.total_seconds() / 3600.0
-                            ultimo_inizio = None
-                        except:
-                            pass
-
-            if ore_lavorate == 0.0 and data_oggi_str in op.get("giorni_presenti", []):
-                ore_lavorate = 8.0  # stima standard giornaliera se in servizio
-
-            costo_op = ore_lavorate * paga
-            costo_totale_giorno += costo_op
-
-            testo_report += f"• {op['nome']} ({op['ruolo']})\n"
-            testo_report += f"  Stato: {op.get('stato')} | Ore: {ore_lavorate:.1f}h | Costo: €{costo_op:.2f}\n\n"
-
-        testo_report += f"COSTO TOTALE GIORNATA: €{costo_totale_giorno:.2f}"
-        
-        st.text_area("Anteprima Testo Report Giornaliero:", value=testo_report, height=180)
-        
-        # 2. Storico presenze operai per il mese
-        st.markdown("---")
-        st.markdown("##### 📅 Dettaglio Presenze Mensili per Operaio")
-        
-        data_corrente = date.today()
-        anno, mese = data_corrente.year, data_corrente.month
-        
-        for op in dati.get("operai", []):
-            giorni_presenti = op.get("giorni_presenti", [])
-            presenti_mese = sum(1 for d in giorni_presenti if d.startswith(f"{anno}-{mese:02d}"))
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor('#0F172A'), spaceAfter=12)
+            normal_style = ParagraphStyle('NormalStyle', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#334155'), spaceAfter=6)
             
-            with st.expander(f"👷‍♂️ {op['nome']} — {presenti_mese} giorni presenti nel mese di {calendar.month_name[mese]}"):
-                for g in range(1, data_corrente.day + 1):
-                    d_chk = date(anno, mese, g)
-                    d_str = d_chk.strftime("%Y-%m-%d")
-                    if d_str in giorni_presenti:
-                        st.markdown(f"🟢 **{d_chk.strftime('%d/%m/%Y')}**: Presente")
-                    else:
-                        st.markdown(f"🔴 **{d_chk.strftime('%d/%m/%Y')}**: Assente")
+            story.append(Paragraph(f"<b>{nome_az.upper()}</b>", title_style))
+            story.append(Paragraph(f"Report Giornaliero Presenze — Data: {datetime.now().strftime('%d/%m/%Y')}", normal_style))
+            story.append(Spacer(1, 12))
+
+            costo_totale_giorno = 0.0
+            data_oggi_str = datetime.now().strftime("%Y-%m-%d")
+
+            for op in dati.get("operai", []):
+                paga = op.get("paga_oraria", 20.0)
+                ore_lavorate = 0.0
+                ultimo_inizio = None
+                
+                for t in op.get("timbrature", []):
+                    if t["orario"].startswith(data_oggi_str):
+                        if t["tipo"] == "Inizia":
+                            try:
+                                ultimo_inizio = datetime.strptime(t["orario"], "%Y-%m-%d %H:%M")
+                            except:
+                                pass
+                        elif t["tipo"] == "Termina" and ultimo_inizio:
+                            try:
+                                fine = datetime.strptime(t["orario"], "%Y-%m-%d %H:%M")
+                                delta = fine - ultimo_inizio
+                                ore_lavorate += delta.total_seconds() / 3600.0
+                                ultimo_inizio = None
+                            except:
+                                pass
+
+                if ore_lavorate == 0.0 and data_oggi_str in op.get("giorni_presenti", []):
+                    ore_lavorate = 8.0
+
+                costo_op = ore_lavorate * paga
+                costo_totale_giorno += costo_op
+
+                testo_op = f"<b>{op['nome']}</b> ({op['ruolo']})<br/>Stato: {op.get('stato')} | Ore: {ore_lavorate:.1f}h | Costo stimato: €{costo_op:.2f}"
+                story.append(Paragraph(testo_op, normal_style))
+                story.append(Spacer(1, 4))
+
+            story.append(Spacer(1, 10))
+            story.append(Paragraph(f"<b>COSTO TOTALE GIORNATA: €{costo_totale_giorno:.2f}</b>", title_style))
+            
+            doc.build(story)
+            return pdf_path
+
+        if st.button("📥 Genera e Scarica Report PDF", type="primary"):
+            path_pdf = genera_pdf_giornaliero()
+            with open(path_pdf, "rb") as f:
+                pdf_bytes = f.read()
+            
+            st.download_button(
+                label="💾 Clicca qui per scaricare il file PDF",
+                data=pdf_bytes,
+                file_name=f"report_{datetime.now().strftime('%Y-%m-%d')}.pdf",
+                mime="application/pdf"
+            )
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     if st.button("🔒 Logout Admin", use_container_width=True):
