@@ -1,0 +1,92 @@
+{
+    "azienda": {
+        "nome": "mora Costruzioni S.R.L.",
+        "piva": "IT12345678901",
+        "admin_password": "1234"
+    },
+    "cantieri": [
+        {
+            "id": 1,
+            "nome": "Cantiere Centro",
+            "indirizzo": "Via Roma 12",
+            "materiali_costo": 12500.0,
+            "documenti": "DURC OK, POS Approvato",
+            "stato": "Terminato"
+        },
+        {
+            "id": 2,
+            "nome": "Cantiere Residenziale",
+            "indirizzo": "Zona Nord 4",
+            "materiali_costo": 8400.0,
+            "documenti": "PIMUS Verificato",
+            "stato": "Terminato"
+        }
+    ],
+    "operai": [
+        {
+            "id": 1,
+            "nome": "Mario Rossi",
+            "ruolo": "Capomastro",
+            "cantiere_id": 1,
+            "stato": "Assente",
+            "ore_ordinarie": 0,
+            "ore_straordinarie": 0,
+            "telefono": "333-1234567",
+            "paga_oraria": 25.0,
+            "documenti": "Patente C, Corsi Sicurezza OK",
+            "timbrature": [],
+            "giorni_presenti": [],
+            "password": "123"
+        },
+        {
+            "id": 2,
+            "nome": "Luigi sabatino",
+            "ruolo": "Muratore Specializzato",
+            "cantiere_id": 1,
+            "stato": "Terminato",
+            "ore_ordinarie": 0,
+            "ore_straordinarie": 0,
+            "telefono": "3474073199",
+            "paga_oraria": 22.0,
+            "password": "120671",
+            "documenti": "Formazione Base OK",
+            "timbrature": [
+                {
+                    "tipo": "Inizia",
+                    "orario": "2026-10-15 21:42",
+                    "gps": "GPS Geofence: In Cantiere (Confermato)"
+                },
+                {
+                    "tipo": "Termina",
+                    "orario": "2026-10-15 21:43",
+                    "gps": "GPS Uscita registrata"
+                },
+                {
+                    "tipo": "Inizia",
+                    "orario": "2026-10-15 21:57",
+                    "gps": "GPS Web: In Cantiere"
+                },
+                {
+                    "tipo": "Termina",
+                    "orario": "2026-10-16 17:05",
+                    "gps": "GPS Web: Uscita"
+                },
+                {
+                    "tipo": "Inizia",
+                    "orario": "2026-10-16 17:06",
+                    "gps": "GPS Web: In Cantiere"
+                },
+                {
+                    "tipo": "Termina",
+                    "orario": "2026-10-16 17:06",
+                    "gps": "GPS Web: Uscita"
+                }
+            ],
+            "giorni_presenti": [
+                "2026-10-15",
+                "2026-10-16"
+            ]
+        }
+    ],
+    "anomalie": []
+}
