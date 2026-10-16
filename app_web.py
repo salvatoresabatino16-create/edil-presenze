@@ -4,7 +4,7 @@ import streamlit as st
 from datetime import datetime, date
 import calendar
 
-# Import per la generazione del PDF
+# Import per la generazione dei PDF
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -250,9 +250,9 @@ elif st.session_state["user_role"] == "admin":
                 st.rerun()
 
     with tab_report:
-        st.markdown("#### 📄 Generazione Report PDF Ufficiale")
-        st.markdown("Scarica il report riepilogativo giornaliero pronto per la stampa o l'archiviazione.")
-
+        st.markdown("#### 📄 Generazione Report PDF Ufficiali")
+        
+        # --- 1. FUNZIONE PDF GIORNALIERO ---
         def genera_pdf_giornaliero():
             pdf_path = os.path.join(BASE_DIR, "report_giornaliero.pdf")
             doc = SimpleDocTemplate(pdf_path, pagesize=letter)
@@ -306,17 +306,75 @@ elif st.session_state["user_role"] == "admin":
             doc.build(story)
             return pdf_path
 
-        if st.button("📥 Genera e Scarica Report PDF", type="primary"):
-            path_pdf = genera_pdf_giornaliero()
-            with open(path_pdf, "rb") as f:
-                pdf_bytes = f.read()
+        # --- 2. FUNZIONE PDF MENSILE (PRESENZE E ASSENZE) ---
+        def genera_pdf_mensile_assenze():
+            pdf_path = os.path.join(BASE_DIR, "report_mensile_assenze.pdf")
+            doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+            story = []
             
-            st.download_button(
-                label="💾 Clicca qui per scaricare il file PDF",
-                data=pdf_bytes,
-                file_name=f"report_{datetime.now().strftime('%Y-%m-%d')}.pdf",
-                mime="application/pdf"
-            )
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor('#0F172A'), spaceAfter=12)
+            subtitle_style = ParagraphStyle('SubStyle', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#1E293B'), spaceBefore=10, spaceAfter=6)
+            normal_style = ParagraphStyle('NormalStyle', parent=styles['Normal'], fontSize=9, textColor=colors.HexColor('#334155'), spaceAfter=3)
+            
+            data_oggi = date.today()
+            anno, mese = data_oggi.year, data_oggi.month
+            nome_mese = calendar.month_name[mese].capitalize()
+
+            story.append(Paragraph(f"<b>{nome_az.upper()}</b>", title_style))
+            story.append(Paragraph(f"<b>REPORT MENSILE PRESENZE E ASSENZE — {nome_mese} {anno}</b>", title_style))
+            story.append(Spacer(1, 10))
+
+            for op in dati.get("operai", []):
+                story.append(Paragraph(f"👷‍♂️ <b>Dipendente: {op['nome']}</b> ({op['ruolo']})", subtitle_style))
+                
+                giorni_presenti = op.get("giorni_presenti", [])
+                tot_presenti = 0
+                tot_assenti = 0
+
+                for g in range(1, data_oggi.day + 1):
+                    d_check = date(anno, mese, g)
+                    d_str = d_check.strftime("%Y-%m-%d")
+                    
+                    if d_str in giorni_presenti:
+                        story.append(Paragraph(f"  🟢 {d_check.strftime('%d/%m/%Y')} — <font color='green'><b>PRESENTE</b></font>", normal_style))
+                        tot_presenti += 1
+                    else:
+                        story.append(Paragraph(f"  🔴 {d_check.strftime('%d/%m/%Y')} — <font color='red'><b>ASSENTE</b></font>", normal_style))
+                        tot_assenti += 1
+
+                story.append(Paragraph(f"<i>Totale Mese: {tot_presenti} Giorni Presenti | {tot_assenti} Giorni Assenti</i>", normal_style))
+                story.append(Spacer(1, 8))
+
+            doc.build(story)
+            return pdf_path
+
+        # --- PULSANTI DI DOWNLOAD ---
+        col_p1, col_p2 = st.columns(2)
+        
+        with col_p1:
+            st.markdown("##### 📌 Report Giornaliero")
+            if st.button("📄 Prepara PDF Giornaliero"):
+                path_g = genera_pdf_giornaliero()
+                with open(path_g, "rb") as f:
+                    st.download_button(
+                        label="💾 Scarica PDF Giornata",
+                        data=f.read(),
+                        file_name=f"report_giornata_{datetime.now().strftime('%Y-%m-%d')}.pdf",
+                        mime="application/pdf"
+                    )
+
+        with col_p2:
+            st.markdown("##### 📅 Report Mensile Presenze/Assenze")
+            if st.button("📄 Prepara PDF Mensile Assenze"):
+                path_m = genera_pdf_mensile_assenze()
+                with open(path_m, "rb") as f:
+                    st.download_button(
+                        label="💾 Scarica PDF Mese Completo",
+                        data=f.read(),
+                        file_name=f"report_presenze_assenze_{datetime.now().strftime('%Y_%m')}.pdf",
+                        mime="application/pdf"
+                    )
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     if st.button("🔒 Logout Admin", use_container_width=True):
